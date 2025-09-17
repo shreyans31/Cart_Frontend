@@ -240,9 +240,73 @@ const TOURS = [
 ];
 
 // ----------------------------------------------
-// Home Page
+// Home Page (fetches data from backend)
 // ----------------------------------------------
 function HomePage(){
+  const [tours, setTours] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTours = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('http://localhost:3001/api/products');
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          // Transform backend products to frontend format
+          const transformedTours = data.data.map((product) => ({
+            id: product.id,
+            slug: product.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+            title: product.name,
+            subtitle: product.description,
+            basePricePerPerson: product.components.matchTickets.price,
+            nights: parseInt(product.duration.split('/')[1].trim().split(' ')[0]),
+            hero: product.imageUrl,
+            images: [product.imageUrl, product.imageUrl, product.imageUrl],
+            highlights: [
+              product.components.matchTickets.name,
+              product.components.flights ? product.components.flights.name : null,
+              product.components.hotel ? product.components.hotel.name : null,
+              `Event Date: ${product.eventDate}`,
+              product.location
+            ].filter(Boolean),
+            product: product
+          }));
+          setTours(transformedTours);
+        } else {
+          console.error('Failed to fetch products:', data);
+          setTours([]);
+        }
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        setTours([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadTours();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="tg-root">
+        <StyleTag/>
+        <Header/>
+        <main className="tg-main">
+          <div className="tg-container">
+            <Card className="tg-home-banner">
+              <h1 className="tg-h1">Loading Tours...</h1>
+              <p className="tg-subtitle">Fetching tour data from backend</p>
+            </Card>
+          </div>
+        </main>
+        <Footer/>
+      </div>
+    );
+  }
+
   return (
     <div className="tg-root">
       <StyleTag/>
@@ -255,7 +319,7 @@ function HomePage(){
           </Card>
 
           <div className="tg-grid" style={{gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))"}}>
-            {TOURS.map(t => <TourCard key={t.slug} tour={t} />)}
+            {tours.map(t => <TourCard key={t.slug} tour={t} />)}
           </div>
         </div>
       </main>
@@ -282,48 +346,126 @@ function TourCard({tour}){
 }
 
 // ----------------------------------------------
-// Package Page (uses TOURS data by slug)
+// Package Page (fetches data from backend)
 // ----------------------------------------------
 function TravelPackagePage(){
   const { slug } = useParams();
   const navigate = useNavigate();
-  const pkg = TOURS.find(t => t.slug === slug) || TOURS[0];
-  if(!pkg){ navigate("/", { replace:true }); return null; }
+  const [pkg, setPkg] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Inventory & state (same as before)
-  const INVENTORY = { flightSeatsLeft: 10, hotelRoomsLeft: 5, destinationSlotsLeft: 12 };
+  // State for user selections
   const [travelers, setTravelers] = useState(2);
-  const [includeFlight, setIncludeFlight] = useState(true);
-  const [includeHotelUpgrade, setIncludeHotelUpgrade] = useState(false);
-  const [includeDestination, setIncludeDestination] = useState(true);
-  const [includeTransfers, setIncludeTransfers] = useState(true);
+  const [includeFlight, setIncludeFlight] = useState(false);
+  const [includeHotel, setIncludeHotel] = useState(false);
   const [includeInsurance, setIncludeInsurance] = useState(false);
-  const [roomsOverride, setRoomsOverride] = useState(0);
 
-  const PRICING = { flightReturnPerPerson:12000, hotelUpgradePerNightPerRoom:3500, airportTransfersPerPerson:1200, insurancePerPerson:400, destinationDayTripPerPerson:1800 };
-  const autoRooms = useMemo(()=>Math.ceil(travelers/2),[travelers]);
-  const rooms = roomsOverride>0?roomsOverride:autoRooms;
+  // Room calculation based on your requirements
+  const rooms = useMemo(() => {
+    if (travelers % 2 === 0) {
+      return travelers / 2; // Even number: guests/2
+    } else {
+      return Math.floor(travelers / 2) + 1; // Odd number: guests/2 + 1
+    }
+  }, [travelers]);
 
-  const inventoryIssues = useMemo(()=>{
-    const issues=[];
-    if(includeFlight && travelers>INVENTORY.flightSeatsLeft) issues.push(`Only ${INVENTORY.flightSeatsLeft} flight seats left`);
-    if(includeHotelUpgrade && rooms>INVENTORY.hotelRoomsLeft) issues.push(`Only ${INVENTORY.hotelRoomsLeft} hotel rooms left for upgrade`);
-    if(includeDestination && travelers>INVENTORY.destinationSlotsLeft) issues.push(`Only ${INVENTORY.destinationSlotsLeft} destination slots left`);
-    return issues;
-  },[includeFlight,includeHotelUpgrade,includeDestination,travelers,rooms]);
+  useEffect(() => {
+    const loadPackage = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('http://localhost:3001/api/products');
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          const product = data.data.find((p) => {
+            const productSlug = p.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            return productSlug === slug;
+          });
+          
+          if (product) {
+            const transformedPkg = {
+              id: product.id,
+              slug: product.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+              title: product.name,
+              subtitle: product.description,
+              basePricePerPerson: product.components.matchTickets.price,
+              nights: parseInt(product.duration.split('/')[1].trim().split(' ')[0]),
+              hero: product.imageUrl,
+              images: [product.imageUrl, product.imageUrl, product.imageUrl],
+              highlights: [
+                product.components.matchTickets.name,
+                product.components.flights ? product.components.flights.name : null,
+                product.components.hotel ? product.components.hotel.name : null,
+                `Event Date: ${product.eventDate}`,
+                product.location
+              ].filter(Boolean),
+              product: product
+            };
+            setPkg(transformedPkg);
+          } else {
+            navigate("/", { replace: true });
+            return;
+          }
+        } else {
+          console.error('Failed to fetch products:', data);
+          navigate("/", { replace: true });
+          return;
+        }
+      } catch (error) {
+        console.error('Error fetching product:', error);
+        navigate("/", { replace: true });
+        return;
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadPackage();
+  }, [slug, navigate]);
 
-  const breakdown = useMemo(()=>{
-    const base = pkg.basePricePerPerson*travelers;
-    const flights = includeFlight?PRICING.flightReturnPerPerson*travelers:0;
-    const hotel = includeHotelUpgrade?PRICING.hotelUpgradePerNightPerRoom*pkg.nights*rooms:0;
-    const dest = includeDestination?PRICING.destinationDayTripPerPerson*travelers:0;
-    const transfers = includeTransfers?PRICING.airportTransfersPerPerson*travelers:0;
-    const insurance = includeInsurance?PRICING.insurancePerPerson*travelers:0;
-    const total = base+flights+hotel+dest+transfers+insurance;
-    return { base, flights, hotel, dest, transfers, insurance, total };
-  },[travelers,rooms,includeFlight,includeHotelUpgrade,includeDestination,includeTransfers,includeInsurance,pkg]);
+  const breakdown = useMemo(() => {
+    if (!pkg?.product) {
+      return { base: 0, flights: 0, hotel: 0, insurance: 0, total: 0 };
+    }
+    
+    // Base price contains only match tickets as per requirements
+    const base = pkg.product.components.matchTickets.price * travelers;
+    
+    // Flights cost as per products.json
+    const flights = includeFlight ? pkg.product.components.flights.price * travelers : 0;
+    
+    // Hotel cost as per products.json (per room)
+    const hotel = includeHotel ? pkg.product.components.hotel.price * rooms : 0;
+    
+    // Insurance cost (per guest)
+    const insurance = includeInsurance ? 400 * travelers : 0; // Fixed rate for insurance
+    
+    const total = base + flights + hotel + insurance;
+    return { base, flights, hotel, insurance, total };
+  }, [travelers, rooms, includeFlight, includeHotel, includeInsurance, pkg]);
 
-  const canBook = inventoryIssues.length===0;
+  if (loading) {
+    return (
+      <div className="tg-root">
+        <StyleTag/>
+        <Header/>
+        <main className="tg-main">
+          <div className="tg-container">
+            <Card className="tg-home-banner">
+              <h1 className="tg-h1">Loading Package...</h1>
+              <p className="tg-subtitle">Fetching package details from backend</p>
+            </Card>
+          </div>
+        </main>
+        <Footer/>
+      </div>
+    );
+  }
+
+  if (!pkg) {
+    navigate("/", { replace: true });
+    return null;
+  }
 
   return (
     <div className="tg-root">
@@ -340,7 +482,21 @@ function TravelPackagePage(){
                 <div className="tg-chiprow">
                   {pkg.highlights.map((h)=> <span key={h} className="tg-chip">{h}</span>)}
                 </div>
-                <p className="tg-meta">Base price: <span className="tg-strong">{currency(pkg.basePricePerPerson)} / person</span></p>
+                <div className="tg-box" style={{marginTop: "16px"}}>
+                  <div className="tg-box-row">
+                    <span>Event Date</span>
+                    <span className="tg-strong">{pkg?.product?.eventDate || 'TBD'}</span>
+                  </div>
+                  <div className="tg-box-row">
+                    <span>Location</span>
+                    <span className="tg-strong">{pkg?.product?.location || 'TBD'}</span>
+                  </div>
+                  <div className="tg-box-row">
+                    <span>Duration</span>
+                    <span className="tg-strong">{pkg?.product?.duration || 'TBD'}</span>
+                  </div>
+                </div>
+                <p className="tg-meta">Base price: <span className="tg-strong">{currency(pkg.product.components.matchTickets.price)} / person</span></p>
                 <p className="tg-meta">Package duration: {pkg.nights+1} days / {pkg.nights} nights</p>
               </Card>
               <Card>
@@ -363,49 +519,51 @@ function TravelPackagePage(){
                     <p className="tg-help">Max 8 per booking</p>
                   </div>
 
-                  <div className="tg-stack-sm">
-                    <ToggleRow checked={includeFlight} onChange={setIncludeFlight} title={`Add Return Flights (${currency(PRICING.flightReturnPerPerson)} / person)`} subtitle={`Seats left: 10`} />
-                    <ToggleRow checked={includeHotelUpgrade} onChange={setIncludeHotelUpgrade} title={`Upgrade to 4★ Hotel (${currency(PRICING.hotelUpgradePerNightPerRoom)} / night / room)`} subtitle={`Rooms left: 5`} />
-                    {includeHotelUpgrade && (
-                      <div className="tg-box">
-                        <div className="tg-box-row">
-                          <span>Rooms <span className="tg-dim">(auto {Math.ceil(travelers/2)})</span></span>
-                          <div className="tg-stepper tg-stepper-sm">
-                            <button className="tg-btn tg-btn-ghost" onClick={()=>setRoomsOverride(r=>Math.max(0,r-1))}>−</button>
-                            <span className="tg-stepper-value">{rooms}</span>
-                            <button className="tg-btn tg-btn-ghost" onClick={()=>setRoomsOverride(r=>Math.min(10,r+1))}>+</button>
-                          </div>
-                        </div>
-                        <p className="tg-help">Set to 0 to use auto-calculated rooms.</p>
+                  <div className="tg-field">
+                    <label className="tg-label">Rooms Required</label>
+                    <div className="tg-box">
+                      <div className="tg-box-row">
+                        <span>Rooms (max 2 guests per room)</span>
+                        <span className="tg-strong">{rooms}</span>
                       </div>
-                    )}
-                    <ToggleRow checked={includeDestination} onChange={setIncludeDestination} title={`Add Day Trip (${currency(PRICING.destinationDayTripPerPerson)} / person)`} subtitle={`Slots left: 12`} />
-                    <ToggleRow checked={includeTransfers} onChange={setIncludeTransfers} title={`Add Airport Transfers (${currency(PRICING.airportTransfersPerPerson)} / person)`} subtitle="Shared AC coach" />
-                    <ToggleRow checked={includeInsurance} onChange={setIncludeInsurance} title={`Add Travel Insurance (${currency(PRICING.insurancePerPerson)} / person)`} subtitle="Covers medical and baggage" />
+                      <p className="tg-help">Auto-calculated: {travelers % 2 === 0 ? `${travelers}/2` : `${Math.floor(travelers/2)}+1`} = {rooms} rooms</p>
+                    </div>
                   </div>
 
-                  {inventoryIssues.length>0 && (
-                    <div className="tg-alert">
-                      <p className="tg-alert-title">Availability warning</p>
-                      <ul className="tg-list">{inventoryIssues.map(msg=> <li key={msg}>{msg}</li>)}</ul>
-                    </div>
-                  )}
+                  <div className="tg-stack-sm">
+                    <ToggleRow 
+                      checked={includeFlight} 
+                      onChange={setIncludeFlight} 
+                      title={`Add Return Flights`} 
+                      subtitle={`${currency(pkg.product.components.flights.price)} × ${travelers} travelers = ${currency(pkg.product.components.flights.price * travelers)}`} 
+                    />
+                    <ToggleRow 
+                      checked={includeHotel} 
+                      onChange={setIncludeHotel} 
+                      title={`Add Hotel Stay`} 
+                      subtitle={`${currency(pkg.product.components.hotel.price)} × ${rooms} rooms = ${currency(pkg.product.components.hotel.price * rooms)}`} 
+                    />
+                    <ToggleRow 
+                      checked={includeInsurance} 
+                      onChange={setIncludeInsurance} 
+                      title={`Add Travel Insurance`} 
+                      subtitle={`${currency(400)} × ${travelers} travelers = ${currency(400 * travelers)}`} 
+                    />
+                  </div>
 
                   <div className="tg-summary">
                     <h4 className="tg-h4">Price breakdown</h4>
                     <ul className="tg-summary-list">
-                      <LineItem label={`Base (${travelers} × ${currency(pkg.basePricePerPerson)})`} value={breakdown.base} />
-                      {includeFlight && (<LineItem label={`Flights (${travelers} × ${currency(PRICING.flightReturnPerPerson)})`} value={breakdown.flights} />)}
-                      {includeHotelUpgrade && (<LineItem label={`Hotel upgrade (${rooms} rooms × ${pkg.nights} nights × ${currency(PRICING.hotelUpgradePerNightPerRoom)})`} value={breakdown.hotel} />)}
-                      {includeDestination && (<LineItem label={`Day trip (${travelers} × ${currency(PRICING.destinationDayTripPerPerson)})`} value={breakdown.dest} />)}
-                      {includeTransfers && (<LineItem label={`Airport transfers (${travelers} × ${currency(PRICING.airportTransfersPerPerson)})`} value={breakdown.transfers} />)}
-                      {includeInsurance && (<LineItem label={`Insurance (${travelers} × ${currency(PRICING.insurancePerPerson)})`} value={breakdown.insurance} />)}
+                      <LineItem label={`${pkg.product.components.matchTickets.name} (${travelers} × ${currency(pkg.product.components.matchTickets.price)})`} value={breakdown.base} />
+                      {includeFlight && (<LineItem label={`Flights (${travelers} × ${currency(pkg.product.components.flights.price)})`} value={breakdown.flights} />)}
+                      {includeHotel && (<LineItem label={`Hotel (${rooms} rooms × ${currency(pkg.product.components.hotel.price)})`} value={breakdown.hotel} />)}
+                      {includeInsurance && (<LineItem label={`Insurance (${travelers} × ${currency(400)})`} value={breakdown.insurance} />)}
                     </ul>
                     <div className="tg-total"><span>Total</span><span className="tg-total-value">{currency(breakdown.total)}</span></div>
                   </div>
 
-                  <button className={`tg-btn tg-btn-primary tg-btn-block ${canBook?"":"tg-btn-disabled"}`} disabled={!canBook} onClick={()=>alert(`Booking ${pkg.title} for ${travelers} → Total ${currency(breakdown.total)}`)}>
-                    {canBook?"Book now":"Unavailable – adjust selection"}
+                  <button className="tg-btn tg-btn-primary tg-btn-block" onClick={()=>alert(`Booking ${pkg.title} for ${travelers} travelers → Total ${currency(breakdown.total)}`)}>
+                    Book now
                   </button>
                   <p className="tg-help center">* Demo UI. Wire this to your checkout when ready.</p>
                 </Card>
