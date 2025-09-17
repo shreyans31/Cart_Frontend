@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Frontend-Backend Connection</title>
+</head>
+<body>
+    <h1>Debug Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        async function testConnection() {
+            const results = document.getElementById('results');
+            
+            try {
+                // Test 1: Check if we can reach the backend
+                results.innerHTML += '<h2>Test 1: Backend Connection</h2>';
+                const response = await fetch('http://localhost:3001/api/products');
+                const data = await response.json();
+                results.innerHTML += `<p>✅ Backend connected: ${data.success}</p>`;
+                results.innerHTML += `<p>Products found: ${data.data.length}</p>`;
+                
+                // Test 2: Show product names
+                results.innerHTML += '<h2>Test 2: Product Names</h2>';
+                data.data.forEach((product, index) => {
+                    results.innerHTML += `<p>${index + 1}. ${product.name}</p>`;
+                });
+                
+                // Test 3: Check if frontend can access the same data
+                results.innerHTML += '<h2>Test 3: Frontend Access</h2>';
+                results.innerHTML += '<p>If you can see this page, the frontend should be able to access the same data.</p>';
+                
+            } catch (error) {
+                results.innerHTML += `<h2>❌ Error: ${error.message}</h2>`;
+                results.innerHTML += `<p>This might be a CORS issue or the backend is not running.</p>`;
+            }
+        }
+        
+        testConnection();
+    </script>
+</body>
+</html>

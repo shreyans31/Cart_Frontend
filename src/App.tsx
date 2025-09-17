@@ -1,5 +1,69 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Link, useParams, useNavigate } from "react-router-dom";
+
+// ----------------------------------------------
+// API Integration
+// ----------------------------------------------
+const API_BASE_URL = 'http://localhost:3001/api';
+
+// Fetch products from backend
+const fetchProducts = async () => {
+  try {
+    console.log('Fetching from:', `${API_BASE_URL}/products`);
+    const response = await fetch(`${API_BASE_URL}/products`);
+    console.log('Response status:', response.status);
+    const data = await response.json();
+    console.log('Response data:', data);
+    return data.success ? data.data : [];
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    return [];
+  }
+};
+
+// Calculate price for selected components
+const calculatePrice = async (productId, selectedComponents) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/products/${productId}/calculate-price`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ selectedComponents })
+    });
+    const data = await response.json();
+    return data.success ? data.data : null;
+  } catch (error) {
+    console.error('Error calculating price:', error);
+    return null;
+  }
+};
+
+// Get EMI options for a product
+const getEMIOptions = async (productId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/products/${productId}/emi-options`);
+    const data = await response.json();
+    return data.success ? data.data.emiOptions : null;
+  } catch (error) {
+    console.error('Error fetching EMI options:', error);
+    return null;
+  }
+};
+
+// Calculate EMI
+const calculateEMI = async (productId, totalAmount, tenure) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/products/${productId}/emi-calculation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ totalAmount, tenure })
+    });
+    const data = await response.json();
+    return data.success ? data.data : null;
+  } catch (error) {
+    console.error('Error calculating EMI:', error);
+    return null;
+  }
+};
 
 // ----------------------------------------------
 // Shared theme + utilities
@@ -124,50 +188,54 @@ function Card({children, className}){return <div className={`tg-card ${className
 function LineItem({label,value}){return(<li className="tg-line"><span className="tg-dim">{label}</span><span className="tg-strong">{currency(value)}</span></li>)}
 
 // ----------------------------------------------
-// Demo Data
+// Sports Event Packages
+// TODO: Replace with official event images from:
+// - Singapore GP: https://singaporegp.sg/en/fanzone/media/photos/
+// - Roland Garros: https://www.rolandgarros.com/en-us/photo-gallery/
+// - Anfield Stadium: Contact Liverpool FC or use Flickr Creative Commons
 // ----------------------------------------------
 const TOURS = [
   {
-    slug: "goa-getaway",
-    title: "Goa Getaway – 5D/4N",
-    subtitle: "Sun, sand, and seaside cafes",
+    slug: "singapore-f1-grand-prix",
+    title: "Singapore F1 Grand Prix",
+    subtitle: "Experience the thrill of Formula 1 racing under the lights at Marina Bay Circuit",
     basePricePerPerson: 25000,
-    nights: 4,
-    hero: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=1600&auto=format&fit=crop",
+    nights: 2,
+    hero: "/images/SGP1.jpeg",
     images: [
-      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=1600&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?q=80&w=1600&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?q=80&w=1600&auto=format&fit=crop",
+      "/images/SGP1.jpeg",
+      "/images/SGP2.webp",
+      "/images/SGP3.jpeg",
     ],
-    highlights: ["4 nights stay","Daily breakfast","North & South Goa tour","Beach shacks & sunset points"],
+    highlights: ["F1 Race Tickets","Return Flights","Luxury Hotel Stay","Event Date: 2024-09-15","Marina Bay Circuit, Singapore"],
   },
   {
-    slug: "kerala-backwaters",
-    title: "Kerala Backwaters – 6D/5N",
-    subtitle: "Houseboats, hill stations & spice trails",
-    basePricePerPerson: 32000,
-    nights: 5,
-    hero: "https://images.unsplash.com/photo-1483683804023-6ccdb62f86ef?q=80&w=1600&auto=format&fit=crop",
-    images: [
-      "https://images.unsplash.com/photo-1483683804023-6ccdb62f86ef?q=80&w=1600&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1483683804023-6ccdb62f86ef?q=80&w=1600&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1483683804023-6ccdb62f86ef?q=80&w=1600&auto=format&fit=crop",
-    ],
-    highlights: ["Houseboat stay","Munnar tea gardens","Alleppey cruise","Ayurvedic massage"]
-  },
-  {
-    slug: "manali-mountains",
-    title: "Manali Mountains – 4D/3N",
-    subtitle: "Snow-capped peaks & cozy cafes",
-    basePricePerPerson: 21000,
+    slug: "liverpool-vs-manchester-united",
+    title: "Liverpool vs Manchester United",
+    subtitle: "Witness the biggest rivalry in English football at Anfield Stadium",
+    basePricePerPerson: 20000,
     nights: 3,
-    hero: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&auto=format&fit=crop",
+    hero: "/images/SGP2.webp",
     images: [
-      "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?q=80&w=1600&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&auto=format&fit=crop",
+      "/images/SGP2.webp",
+      "/images/SGP1.jpeg",
+      "/images/SGP3.jpeg",
     ],
-    highlights: ["Solang Valley","Cafe hopping","Hadimba Temple","River rafting (seasonal)"]
+    highlights: ["Match Tickets","Return Flights","Hotel Accommodation","Event Date: 2024-10-20","Anfield Stadium, Liverpool"]
+  },
+  {
+    slug: "french-open-tennis-championship",
+    title: "French Open Tennis Championship",
+    subtitle: "Experience the clay court magic at Roland Garros",
+    basePricePerPerson: 30000,
+    nights: 4,
+    hero: "/images/SGP3.jpeg",
+    images: [
+      "/images/SGP3.jpeg",
+      "/images/SGP1.jpeg",
+      "/images/SGP2.webp",
+    ],
+    highlights: ["Tennis Tournament Tickets","Return Flights","Paris Hotel Stay","Event Date: 2024-05-26","Roland Garros, Paris"]
   }
 ];
 
@@ -182,8 +250,8 @@ function HomePage(){
       <main className="tg-main">
         <div className="tg-container">
           <Card className="tg-home-banner">
-            <h1 className="tg-h1">Find your next escape</h1>
-            <p className="tg-subtitle">Curated experiences with flexible add‑ons. Pick a package to customize.</p>
+            <h1 className="tg-h1">Find your next sports experience</h1>
+            <p className="tg-subtitle">Premium sports events with flexible add‑ons. Pick a package to customize.</p>
           </Card>
 
           <div className="tg-grid" style={{gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))"}}>

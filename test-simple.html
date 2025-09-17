@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Backend Test</title>
+</head>
+<body>
+    <h1>Backend Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        async function testBackend() {
+            const results = document.getElementById('results');
+            try {
+                const response = await fetch('http://localhost:3001/api/products');
+                const data = await response.json();
+                results.innerHTML = `
+                    <h2>✅ Backend Connected!</h2>
+                    <p>Found ${data.data.length} products:</p>
+                    <ul>
+                        ${data.data.map(p => `<li><strong>${p.name}</strong> - ${p.basePrice} (${p.category})</li>`).join('')}
+                    </ul>
+                `;
+            } catch (error) {
+                results.innerHTML = `<h2>❌ Error: ${error.message}</h2>`;
+            }
+        }
+        
+        testBackend();
+    </script>
+</body>
+</html>
