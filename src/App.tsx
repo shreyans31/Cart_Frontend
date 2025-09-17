@@ -75,10 +75,14 @@ function StyleTag() {
   return (
     <style>{`
 :root { --tg-bg:#f6f7fb; --tg-card:#fff; --tg-text:#0f1222; --tg-dim:#6b7280; --tg-border:#e6e3ef; --tg-shadow:0 6px 24px rgba(33,21,81,.08); --tg-purple-50:#f4f1ff; --tg-purple-100:#ebe5ff; --tg-purple-200:#d7ccff; --tg-purple-300:#b8a1ff; --tg-purple-400:#9a7aff; --tg-purple-500:#7c53ff; --tg-purple-600:#6b46ff; --tg-purple-700:#5b3ae6; --tg-purple-800:#4b2fcc; --tg-purple-900:#3925a6; }
-*{box-sizing:border-box} body,html,#root{height:100%} body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:var(--tg-bg);color:var(--tg-text)}
-.tg-root{min-height:100vh;display:flex;flex-direction:column}
+*{box-sizing:border-box} 
+html,body,#root{height:100%;margin:0;padding:0;width:100%} 
+body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:var(--tg-bg);color:var(--tg-text)}
+.tg-root{min-height:100vh;width:100%;display:flex;flex-direction:column}
 /* FULL-WIDTH CONTAINER */
-.tg-container{width:100%;max-width:none;margin:0 auto;padding:0 24px}
+.tg-container{width:100%;max-width:1400px;margin:0 auto;padding:0 16px}
+@media(min-width:768px){.tg-container{padding:0 24px}}
+@media(min-width:1200px){.tg-container{padding:0 32px}}
 .tg-header{position:sticky;top:0;z-index:20;backdrop-filter:blur(8px);background:rgba(255,255,255,.8);border-bottom:1px solid var(--tg-border)}
 .tg-header-row{display:flex;align-items:center;justify-content:space-between;height:64px}
 .tg-brand{display:flex;align-items:center;gap:10px}
@@ -89,9 +93,9 @@ function StyleTag() {
 .tg-nav a, .tg-nav a:visited{color:#374151;text-decoration:none;font-size:14px}
 .tg-nav a:hover{color:var(--tg-purple-700)}
 @media(min-width:768px){.tg-nav{display:flex}}
-.tg-main{flex:1;padding:32px 0 24px}
-.tg-grid{display:grid;grid-template-columns:1fr;gap:24px}
-@media(min-width:900px){.tg-grid{grid-template-columns:2fr 1fr}}
+.tg-main{flex:1;padding:32px 0 24px;width:100%}
+.tg-grid{display:grid;grid-template-columns:1fr;gap:24px;width:100%}
+@media(min-width:1200px){.tg-grid{grid-template-columns:2fr 1fr}}
 .tg-card{background:var(--tg-card);border:1px solid var(--tg-border);border-radius:18px;box-shadow:var(--tg-shadow);padding:20px}
 .tg-h1{font-size:28px;font-weight:800;margin:0 0 4px;letter-spacing:-.01em}
 .tg-h2{font-size:20px;font-weight:700;margin:0 0 12px}
@@ -157,7 +161,9 @@ function StyleTag() {
 /* give space from summary to button */
 .tg-summary + .tg-btn{margin-top:16px}
 /* add space below banner card on home */
-.tg-home-banner{margin-bottom:32px}
+.tg-home-banner{margin-bottom:32px;background:linear-gradient(135deg,var(--tg-purple-600),var(--tg-purple-800));color:white;text-align:center;padding:48px 32px}
+.tg-home-banner .tg-h1{color:white;font-size:3rem;margin-bottom:16px}
+.tg-home-banner .tg-subtitle{color:rgba(255,255,255,0.9);font-size:1.25rem}
 `}</style>
   );
 }
@@ -318,7 +324,7 @@ function HomePage(){
             <p className="tg-subtitle">Premium sports events with flexible add‑ons. Pick a package to customize.</p>
           </Card>
 
-          <div className="tg-grid" style={{gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))"}}>
+          <div className="tg-grid" style={{gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "32px", marginTop: "32px"}}>
             {tours.map(t => <TourCard key={t.slug} tour={t} />)}
           </div>
         </div>
